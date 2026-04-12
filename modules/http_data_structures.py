@@ -1,4 +1,6 @@
 import http.client
+import json
+import re
 
 class RequestErr(Exception):
 	def __init__(self, res: http_response):
@@ -11,20 +13,23 @@ class RequestErr(Exception):
 		return json.dumps(self.err)
 
 class http_request:
-	def __init__(self, headers: dict = {}):
+	def __init__(self, headers: dict = {}, body: dict = {}):
 		self.path = "/"
 		self.headers = headers
+		self.body = body
 
-class http_response():
+class http_response(http_request):
 	def __init__(self, response: http.client.HTTPResponse | None = None):
+		super().__init__()
+
 		if response.status != 200:
 			raise RequestErr(response)
 
-		self.__parse_headers(response.headers)	
+		self.headers = self.__parse_headers(response.headers)	
 		self.body = response.read().decode()
 		self.status = response.status
 
-	def __parse_headers(self, headers):
+	def __parse_headers(self, headers) -> dict:
 		buf = []
 		headers_dict = {}
 
@@ -36,6 +41,3 @@ class http_response():
 			headers_dict[buf[0]] = buf[1]
 
 		return headers_dict
-
-class http_getter:
-	
