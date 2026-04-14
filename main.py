@@ -5,10 +5,10 @@ sys.path.append("./modules")
 import goszakup
 import xmlm
 
-gov_buyings_filter = goszakup.goszakup_filters(name="Атыра", year="2026")
+gov_buyings_filter = goszakup.goszakup_filters(customer="Атыра", year="2026")
 print(gov_buyings_filter.urlify())
 
 gz = goszakup.goszakup(gov_buyings_filter)
-print(gz.data.body)
+print(gz.data.text)
 
 #for line in gz.data.body.split('\n'):
