@@ -1,17 +1,6 @@
 import requests
 import json
 import re
-from abc import ABC
-
-class RequestErr(Exception):
-	def __init__(self, res):
-		self.err = {
-			"status": res.status, 
-			"response": res.body
-		}
-
-	def __str__(self):
-		return json.dumps(self.err)
 
 class http_request:
 	def __init__(self, host: str, path: str="/", headers: dict = {}, body: dict = {}):

@@ -12,15 +12,15 @@ class xml_stack:
 		self.data = []
 		self.data.append(xml_node("root", ""))
 
-	def __remove(tag: str):
-		if tag == this.data[-1].tag:
+	def __remove(self, tag: str):
+		if tag == self.data[-1].tag:
 			self.data.pop()
 		else:
-			raise Exception('Improperly closed/opened tag {}'.format(str(self.data[-1])))
+			raise Exception('Improperly closed/opened tag {}'.format(str(self.data[-1].tag)))
 
-	def add(tag: str):
+	def add(self, tag: str):
 		if tag[0] == '/':
-			self.__remove(tag);
+			self.__remove(tag)
 		else:
 			new_node = xml_node(tag, '')
 			self.data[-1].children.append(new_node)
@@ -94,8 +94,4 @@ class xml_parser:
 				
 			self.pos += 1
 
-		if self.xml_node_stack.data[-1].tag != "root":
-			raise Exception('Unclosed tag in the document \n{}'.format(self.xml_node_stack.data[-1].tag))
-		
-		self.xml_node_stack.add("root")
-		return self.xml_node_buf[-1]
+		return self.xml_node_stack.data
