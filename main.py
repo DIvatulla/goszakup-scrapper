@@ -12,8 +12,4 @@ print(gov_buyings_filter.urlify())
 
 
 gz = goszakup.goszakup(gov_buyings_filter)
-soup = BeautifulSoup(gz.get(), features="lxml")
-print(str(soup.find_all('tbody')[1].decode_contents()))
-
-
-#print(parser.parse())
+gz.make_table()

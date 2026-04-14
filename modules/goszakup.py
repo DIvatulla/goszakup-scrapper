@@ -2,12 +2,15 @@ from urllib.parse import quote
 from urllib.parse import unquote
 from http_module import https
 from http_module import http_request
+from bs4 import BeautifulSoup
+import time
 import re
 
 class goszakup_filters:
 	def __init__(self, name: str="", customer: str="", spec: str="",\
 				number: str="", month: str="", year: str="", status: str="",\
-				subject_type: str="", qvazi=""):
+				subject_type: str="", qvazi: str="",\
+				count_record: int=50, page: int=1):
 		self.name = name
 		self.customer = customer
 		self.number = number
@@ -21,7 +24,7 @@ class goszakup_filters:
 		for attr, value in self.__dict__.items():
 			yield attr, value	 
 
-	def urlify(self, count_record: int=50, page: int=1) -> str:
+	def urlify(self) -> str:
 		res = "/ru/registry/plan?"
 		filters_table = dict(self)
 
@@ -37,15 +40,12 @@ class goszakup_filters:
 
 				res += quote("filter[{}]={}&".format(item, filters_table[item]), safe='/:=&')	
 
-		res += "count_record={}&page={}".format(count_record, page)
+		res += "count_record={}&page={}".format(self.count_record, self.page)
 		return res
 
 class goszakup:
 	def __init__(self, filters: goszakup_filters):
 		self.filters = filters
-	
-	def get(self):
-		return self.__get_request()
 
 	def __get_request(self) -> str:
 		req = http_request(host="https://goszakup.gov.kz", path=(self.filters.urlify()), headers={"Host": "goszakup.gov.kz",
@@ -76,6 +76,26 @@ class goszakup:
 		for i in range(50, self.count, 50):
 			self.filters.number = i
 			self.buf.append(self.__get_request())
+			time.sleep(5)
 			print(self.buf[-1])
 
+	def __parse_html(self):
+		rows = []
+		self.__get_all_pages()
+
+		for page in self.buf:
+			soup = BeautifulSoup(page, features="lxml")
+			for tr in (soup.find_all('tbody')[1]).find_all('tr'):
+				cells = tr.find_all('td')
+				row_data = [c.get_text(strip=True) for c in cells]
+				rows.append(row_data)
 		
+		self.rows = rows
+
+	def make_table(self):
+		self.__get_all_pages()
+		self.__parse_html()
+
+		print("#п/п;Заказчик;Наименование;Способ;закупки;Единица_измерения;Кол-во;Цена_за_ед.;Плановая_сумма;Планируемый_срок_закупки;Статус")
+		for r in self.rows:
+			print(";".join(r))
