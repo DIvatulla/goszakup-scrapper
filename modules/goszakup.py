@@ -7,7 +7,7 @@ from http_module import http_response
 class goszakup_filters:
 	def __init__(self, name: str="", customer: str="", spec: str="",\
 				number: str="", month: str="", year: str="", status: str="",\
-				subject_type: str="G", qvazi=""):
+				subject_type: str="", qvazi=""):
 		self.name = name
 		self.customer = customer
 		self.number = number
@@ -27,17 +27,16 @@ class goszakup_filters:
 
 		for item in filters_table:
 			if type(filters_table[item]) == list:
-				res += quote("filter[{}][]?".format(filters_table[item]))
-			else:
-				res += quote("filter[{}]?".format(filters_table[item]))	
+				res += quote("filter[{}][]={}&".format(item, filters_table[item][-1]), safe='/:=&')
+			else:	
+				res += quote("filter[{}]={}&".format(item, filters_table[item]), safe='/:=&')	
 
+		res += "&count_record=50&page=1"
 		return res
-
-class goszakup_parser:
 
 class goszakup:
 	def __init__(self, filters: goszakup_filters):
-		req = http_request("goszakup.gov.kz", filters.urlify(), {"Content-Type": "*/*"})	
+		req = http_request(host="goszakup.gov.kz", path=filters.urlify(), headers={"Host": "goszakup.gov.kz", "User-Agent": "curl/8.14.1", "Content-Type": "*/*"})	
 		self.data = https.get(req)	
 	
 
