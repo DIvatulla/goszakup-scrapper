@@ -19,6 +19,8 @@ class goszakup_filters:
 		self.status = status
 		self.subject_type = subject_type
 		self.qvazi = qvazi
+		self.count_record = count_record
+		self.page = page
 
 	def __iter__(self):
 		for attr, value in self.__dict__.items():
@@ -46,6 +48,7 @@ class goszakup_filters:
 class goszakup:
 	def __init__(self, filters: goszakup_filters):
 		self.filters = filters
+		self.__count_pages()
 
 	def __get_request(self) -> str:
 		req = http_request(host="https://goszakup.gov.kz", path=(self.filters.urlify()), headers={"Host": "goszakup.gov.kz",
@@ -68,34 +71,24 @@ class goszakup:
 					match = re.search(f"{r"из "}(.*?){r" записей"}", line)
 					self.count = int(match.group(1))
 					break
-	
-	def __get_all_pages(self):
-		self.buf = []
-		self.__count_pages()
 
-		for i in range(50, self.count, 50):
-			self.filters.number = i
-			self.buf.append(self.__get_request())
-			time.sleep(5)
-			print(self.buf[-1])
-
-	def __parse_html(self):
+	def __parse_html(self, html_doc: str) -> list:
 		rows = []
-		self.__get_all_pages()
-
-		for page in self.buf:
-			soup = BeautifulSoup(page, features="lxml")
-			for tr in (soup.find_all('tbody')[1]).find_all('tr'):
-				cells = tr.find_all('td')
-				row_data = [c.get_text(strip=True) for c in cells]
-				rows.append(row_data)
+		soup = BeautifulSoup(html_doc, features="lxml")
+		for tr in (soup.find_all('tbody')[1]).find_all('tr'):
+			cells = tr.find_all('td')
+			row_data = [c.get_text(strip=True) for c in cells]
+			rows.append(row_data)
 		
-		self.rows = rows
+		return rows
+
+	def __make_page(self):
+		for r in self.__parse_html(self.__get_request()):
+			print(";".join(r))
 
 	def make_table(self):
-		self.__get_all_pages()
-		self.__parse_html()
-
 		print("#п/п;Заказчик;Наименование;Способ;закупки;Единица_измерения;Кол-во;Цена_за_ед.;Плановая_сумма;Планируемый_срок_закупки;Статус")
-		for r in self.rows:
-			print(";".join(r))
+		for i in range(self.filters.count_record, self.count, self.filters.count_record):
+			self.filters.page += 1
+			self.__make_page()
+			time.sleep(5)
