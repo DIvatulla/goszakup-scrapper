@@ -65,30 +65,40 @@ class goszakup:
 			match st:
 				case 0:
 					if "<small class=\"text-muted\">" in line:
-				  		st += 1
-				  		continue
+						st += 1
+						continue
 				case 1:
 					match = re.search(f"{r"из "}(.*?){r" записей"}", line)
 					self.count = int(match.group(1))
 					break
 
 	def __parse_html(self, html_doc: str) -> list:
-		rows = []
+		table = []
 		soup = BeautifulSoup(html_doc, features="lxml")
+		
 		for tr in (soup.find_all('tbody')[1]).find_all('tr'):
 			cells = tr.find_all('td')
-			row_data = [c.get_text(strip=True) for c in cells]
-			rows.append(row_data)
-		
-		return rows
+			row = []
+			
+			for c in cells:
+				row.append(c.get_text(strip=True))
+				link_tag = c.find('a')
+				
+				if link_tag:
+					url = link_tag.get('href')
+					row.append(url)
+			
+			table.append(row)
 
-	def __make_page(self):
-		for r in self.__parse_html(self.__get_request()):
-			print(";".join(r))
+		return table
 
-	def make_table(self):
-		print("#п/п;Заказчик;Наименование;Способ;закупки;Единица_измерения;Кол-во;Цена_за_ед.;Плановая_сумма;Планируемый_срок_закупки;Статус")
-		for i in range(self.filters.count_record, self.count, self.filters.count_record):
-			self.filters.page += 1
-			self.__make_page()
-			time.sleep(5)
+	def make_table(self, filename: str):
+		with open(filename, 'w', encoding='utf-8') as f:
+			f.write("#п/п;Заказчик;URL;Наименование;URL;Способ_закупки;Единица_измерения;Кол-во;Цена_за_ед.;Плановая_сумма;Планируемый_срок_закупки;Статус\n")
+			self.filters.page = 0
+			for i in range(self.filters.count_record, self.count, self.filters.count_record):
+				self.filters.page += 1
+				for r in self.__parse_html(self.__get_request()):
+					f.write(";".join(r) + '\n')
+					
+				time.sleep(5)
