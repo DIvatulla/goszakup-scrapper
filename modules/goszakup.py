@@ -11,7 +11,7 @@ class goszakup_filters:
 	def __init__(self, name: str="", customer: str="", spec: str="",\
 				number: str="", month: str="", year: str="", status: str="",\
 				subject_type: str="", qvazi: str="",\
-				count_record: int=50, page: int=1):
+				count_record: int=2000, page: int=1):
 		self.name = name
 		self.customer = customer
 		self.number = number
@@ -69,6 +69,7 @@ class goszakup:
 						st += 1
 						continue
 				case 1:
+					print(line)
 					match = re.search(f"{r"из "}(.*?){r" записей"}", line)
 					self.count = int(match.group(1))
 					break
@@ -101,6 +102,8 @@ class excel:
 
 	@classmethod
 	def make_table(cls, gz: goszakup, filename: str):
+		print(gz.count)
+		print(gz.filters.count_record)
 		wb = Workbook()
 		ws = wb.active
 		
@@ -110,8 +113,9 @@ class excel:
 		ws.append(headers)
 
 		gz.filters.page = 0
-		for i in range(gz.filters.count_record, gz.count, gz.filters.count_record):
+		for i in range(gz.filters.count_record, gz.count+gz.filters.count_record, gz.filters.count_record):
 			gz.filters.page += 1
+			print("gz.filter.page = {}".format(gz.filters.page))
 			for row in cls.__parse_html(gz.get_request()):
 				ws.append([cell_dict["content"] for cell_dict in row])
 				
