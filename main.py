@@ -9,4 +9,4 @@ from bs4 import BeautifulSoup
 
 gov_buyings_filter = goszakup.goszakup_filters(customer="Атыра", year="2026", count_record=2000)
 gz = goszakup.goszakup(gov_buyings_filter)
-gz.make_table("./goszakup_table.csv")
+goszakup.excel.make_table(gz, "./goszakup_table.xlsx")
