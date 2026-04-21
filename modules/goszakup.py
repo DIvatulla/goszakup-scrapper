@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 import time
 import re
 import requests
-
+from requests.adapters import HTTPAdapter
 
 class goszakup_filters:
 	def __init__(self, name: str="", customer: str="", spec: str="",\
@@ -52,13 +52,19 @@ class goszakup_filters:
 class goszakup:
 	def __init__(self, filters: goszakup_filters):
 		self.filters = filters
+		self.host = "https://goszakup.gov.kz"
+		self.adapter = HTTPAdapter(max_retries=3)
+		self.session = requests.Session()
+		self.session.mount('https://goszakup.gov.kz', self.adapter)
+		self.session.headers.update({
+			"Host": "goszakup.gov.kz",
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+			"Content-Type": "*/*"
+		})
 		self.__count_pages()
 
 	def get_request(self) -> str:
-		req = http_request(host="https://goszakup.gov.kz", path=(self.filters.urlify()), headers={"Host": "goszakup.gov.kz",
-		"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36",
-		"Content-Type": "*/*"})	
-		return https.get(req).text
+		return self.session.get('{}{}'.format(self.host, self.filters.urlify())).text	
 
 	def __count_pages(self) -> int:
 		self.count = 0
@@ -92,73 +98,31 @@ class excel:
 				lambda x: table.append(x),
 				(list(map(lambda cell: cls.parse_cell(cell), cells)))
 			)))
-			#table.append(list(map(lambda cell: cls.parse_cell(cell), cells)))
-			print(table[-1])
 
 		return table
 
 	@classmethod
 	def make_table(cls, gz: goszakup, filename: str):
+		wb = Workbook()
+		ws = wb.active
+
 		for i in range(gz.filters.count_record, gz.count+gz.filters.count_record, gz.filters.count_record):
 			gz.filters.page += 1
 			for row in cls.parse_html(gz.get_request()):
-				print(row)
-				
 				if (row["content"] == '') and (row["url"] != None):
 					time.sleep(5)
-					res = requests.get(row["url"], {
-						"Host": "goszakup.gov.kz",
-						"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
-						"Content-Type": "*/*"}).text
+					res = gz.session.get(row["url"]).text
 					soup = BeautifulSoup(res, features="lxml")
 					row["content"] = (soup.find_all('title')[0]).get_text(strip=True)
-				
-				print(row)	
-				time.sleep(10)
 
-
-				"""
-				if row["content"] == row["url"]:
-					res = requests.get(row["url"]).text
-					print(res)
-					exit(1)
-					soup = BeautifulSoup(res, features="lxml")
-					org_name = (soup.find_all('title')[0]).get_text(strip=True)
-					result["content"] = re.split(r" ::", org_name)[0]
-
-				print(row)
-				time.sleep(10)
-				"""
-"""
-	@classmethod
-	def make_table(cls, gz: goszakup, filename: str):
-		print(gz.count)
-		print(gz.filters.count_record)
-		wb = Workbook()
-		ws = wb.active
-		
-		headers = ["#п/п", "Заказчик", "Наименование", "Способ_закупки",
-				"Единица_измерения", "Кол-во", "Цена_за_ед", "Плановая_сумма",
-				"Планируемый_срок_закупки", "Статус"]
-		ws.append(headers)
-
-		gz.filters.page = 0
-		for i in range(gz.filters.count_record, gz.count+gz.filters.count_record, gz.filters.count_record):
-			gz.filters.page += 1
-			print("gz.filter.page = {}".format(gz.filters.page))
-			for row in cls.__parse_html(gz.get_request()):
 				ws.append([cell_dict["content"] for cell_dict in row])
-				
 				for col_idx, cell_dict in enumerate(row, start=1):
 					if cell_dict["url"]:
 						print(cell_dict)
 						cell_obj = ws.cell(row=ws.max_row, column=col_idx)
 						cell_obj.hyperlink = cell_dict["url"]
 						cell_obj.style = "Hyperlink"
-
-			time.sleep(5)
-		
-		wb.save(filename)
-"""
-
 				
+				time.sleep(10)
+
+		wb.save(filename)

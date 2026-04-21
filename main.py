@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import sys
-sys.path.append("./modules")
 import goszakup
 import json
 from bs4 import BeautifulSoup
@@ -14,8 +13,5 @@ def load_config():
         conf["year"], conf["status"], conf["subject_type"]))
 
 gov_buyings_filter = load_config()
-print(gov_buyings_filter.__dict__)
 gz = goszakup.goszakup(gov_buyings_filter)
 goszakup.excel.make_table(gz, "./goszakup_table.xlsx")
-
-input("Press any key")
