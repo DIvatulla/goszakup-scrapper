@@ -1,7 +1,6 @@
 from urllib.parse import quote
 from urllib.parse import unquote
-from http_module import https
-from http_module import http_request
+import bs4
 from bs4 import BeautifulSoup
 from openpyxl import Workbook
 from urllib.parse import urlsplit
@@ -94,10 +93,8 @@ class excel:
 		
 		for tr in ((soup.find_all('tbody')[1]).find_all('tr')):
 			cells = tr.find_all('td')
-			(list(map(
-				lambda x: table.append(x),
-				(list(map(lambda cell: cls.parse_cell(cell), cells)))
-			)))
+			row = list(map(lambda cell: excel.parse_cell(cell), cells))
+			table.append(row)
 
 		return table
 
@@ -109,14 +106,15 @@ class excel:
 		for i in range(gz.filters.count_record, gz.count+gz.filters.count_record, gz.filters.count_record):
 			gz.filters.page += 1
 			for row in cls.parse_html(gz.get_request()):
-				if (row["content"] == '') and (row["url"] != None):
-					time.sleep(5)
-					res = gz.session.get(row["url"]).text
-					soup = BeautifulSoup(res, features="lxml")
-					row["content"] = (soup.find_all('title')[0]).get_text(strip=True)
+				print(row)
 
 				ws.append([cell_dict["content"] for cell_dict in row])
 				for col_idx, cell_dict in enumerate(row, start=1):
+					if (cell_dict["content"] == '') and (cell_dict["url"] != None):
+						res = gz.session.get(cell_dict["url"]).text
+						soup = BeautifulSoup(res, features="lxml")
+						cell_dict["content"] = (soup.find_all('title')[0]).get_text(strip=True)
+
 					if cell_dict["url"]:
 						print(cell_dict)
 						cell_obj = ws.cell(row=ws.max_row, column=col_idx)
