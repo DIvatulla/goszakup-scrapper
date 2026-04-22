@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 import time
 import re
 import requests
+import random
 from requests.adapters import HTTPAdapter
 
 class goszakup_filters:
@@ -52,9 +53,9 @@ class goszakup:
 	def __init__(self, filters: goszakup_filters):
 		self.filters = filters
 		self.host = "https://goszakup.gov.kz"
-		self.adapter = HTTPAdapter(max_retries=3)
+		self.adapter = HTTPAdapter(max_retries=10)
 		self.session = requests.Session()
-		self.session.mount('https://goszakup.gov.kz', self.adapter)
+		self.session.mount('https://', self.adapter)
 		self.session.headers.update({
 			"Host": "goszakup.gov.kz",
 			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
@@ -63,7 +64,7 @@ class goszakup:
 		self.__count_pages()
 
 	def get_request(self) -> str:
-		return self.session.get('{}{}'.format(self.host, self.filters.urlify())).text	
+		return self.session.get('{}{}'.format(self.host, self.filters.urlify()), verify=False).text	
 
 	def __count_pages(self) -> int:
 		self.count = 0
@@ -91,6 +92,7 @@ class excel:
 		table = []
 		soup = BeautifulSoup(html_doc, features="lxml")
 		
+		print(html_doc)
 		for tr in ((soup.find_all('tbody')[1]).find_all('tr')):
 			cells = tr.find_all('td')
 			row = list(map(lambda cell: excel.parse_cell(cell), cells))
@@ -102,25 +104,32 @@ class excel:
 	def make_table(cls, gz: goszakup, filename: str):
 		wb = Workbook()
 		ws = wb.active
+		c = 0
 
 		for i in range(gz.filters.count_record, gz.count+gz.filters.count_record, gz.filters.count_record):
 			gz.filters.page += 1
+			
 			for row in cls.parse_html(gz.get_request()):
-				print(row)
-
 				ws.append([cell_dict["content"] for cell_dict in row])
+
 				for col_idx, cell_dict in enumerate(row, start=1):
 					if (cell_dict["content"] == '') and (cell_dict["url"] != None):
-						res = gz.session.get(cell_dict["url"]).text
+						c += 1
+						if (c % 50) == 0:
+							c = 0
+							print('cell sleep')
+							time.sleep(random.uniform(2.5, 4.5))
+						res = gz.session.get(cell_dict["url"], verify=False).text
 						soup = BeautifulSoup(res, features="lxml")
 						cell_dict["content"] = (soup.find_all('title')[0]).get_text(strip=True)
-
-					if cell_dict["url"]:
 						print(cell_dict)
+					if cell_dict["url"]:
 						cell_obj = ws.cell(row=ws.max_row, column=col_idx)
 						cell_obj.hyperlink = cell_dict["url"]
 						cell_obj.style = "Hyperlink"
+						
 				
-				time.sleep(10)
-
+			print('page sleep')
+			time.sleep(random.uniform(29, 79))
+			
 		wb.save(filename)
