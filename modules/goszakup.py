@@ -12,16 +12,17 @@ from requests.adapters import HTTPAdapter
 
 class goszakup_filters:
 	def __init__(self, name: str="", customer: str="", spec: str="",\
-				number: str="", month: str="", year: str="", status: str="",\
-				subject_type: str="", qvazi: str="",\
+				number: str="", month: list=[], year: list=[], status: str="",\
+				subject_type: str="", qvazi: str="", method: list=[],
 				count_record: int=2000, page: int=1):
 		self.name = name
 		self.customer = customer
 		self.number = number
-		self.month = [month]
-		self.year = [year]
+		self.month = month
+		self.year = year
 		self.status = status
 		self.subject_type = subject_type
+		self.method = method
 		self.qvazi = qvazi
 		self.count_record = count_record
 		self.page = page
@@ -35,15 +36,13 @@ class goszakup_filters:
 		filters_table = dict(self)
 
 		for item in filters_table:
+			if (type(filters_table[item]) == int) or (len(filters_table[item]) == 0):
+				continue
+			
 			if type(filters_table[item]) == list:
-				if filters_table[item][-1] == '':
-					continue
-				
-				res += quote("filter[{}][]={}&".format(item, filters_table[item][-1]), safe='/:=&')
+				for e in filters_table[item]:
+					res += quote("filter[{}][]={}&".format(item, e), safe='/:=&')
 			else:
-				if filters_table[item] == '':
-					continue
-
 				res += quote("filter[{}]={}&".format(item, filters_table[item]), safe='/:=&')	
 
 		res += "count_record={}&page={}".format(self.count_record, self.page)
@@ -104,32 +103,20 @@ class excel:
 	def make_table(cls, gz: goszakup, filename: str):
 		wb = Workbook()
 		ws = wb.active
-		c = 0
 
-		for i in range(gz.filters.count_record, gz.count+gz.filters.count_record, gz.filters.count_record):
-			gz.filters.page += 1
+		try:
+			for i in range(gz.filters.count_record, gz.count+gz.filters.count_record, gz.filters.count_record):
+				gz.filters.page += 1
 			
-			for row in cls.parse_html(gz.get_request()):
-				ws.append([cell_dict["content"] for cell_dict in row])
+				for row in cls.parse_html(gz.get_request()):
+					ws.append([cell_dict["content"] for cell_dict in row])
 
-				for col_idx, cell_dict in enumerate(row, start=1):
-					if (cell_dict["content"] == '') and (cell_dict["url"] != None):
-						c += 1
-						if (c % 50) == 0:
-							c = 0
-							print('cell sleep')
-							time.sleep(random.uniform(2.5, 4.5))
-						res = gz.session.get(cell_dict["url"], verify=False).text
-						soup = BeautifulSoup(res, features="lxml")
-						cell_dict["content"] = (soup.find_all('title')[0]).get_text(strip=True)
-						print(cell_dict)
-					if cell_dict["url"]:
-						cell_obj = ws.cell(row=ws.max_row, column=col_idx)
-						cell_obj.hyperlink = cell_dict["url"]
-						cell_obj.style = "Hyperlink"
-						
+					for col_idx, cell_dict in enumerate(row, start=1):
+						if cell_dict["url"]:
+							cell_obj = ws.cell(row=ws.max_row, column=col_idx)
+							cell_obj.hyperlink = cell_dict["url"]
+							cell_obj.style = "Hyperlink"
 				
-			print('page sleep')
-			time.sleep(random.uniform(29, 79))
-			
-		wb.save(filename)
+				time.sleep(random.uniform(29, 79))
+		finally:
+			wb.save(filename)

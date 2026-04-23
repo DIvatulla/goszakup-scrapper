@@ -1,11 +1,13 @@
 {
+	"name": "",
 	"year": "",
 	"customer": "",
 	"spec": "",
 	"number": "",
-	"month": "",
-	"year": "",
+	"month": [],
+	"year": [2025, 2026, 2027],
 	"status": "",
-	"subject_type": ""
+	"subject_type": [],
+	"method": []
 }
 
