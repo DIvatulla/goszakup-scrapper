@@ -13,7 +13,7 @@ from requests.adapters import HTTPAdapter
 class goszakup_filters:
 	def __init__(self, name: str="", customer: str="", spec: str="",\
 				number: str="", month: list=[], year: list=[], status: str="",\
-				subject_type: str="", qvazi: str="", method: list=[],
+				subject_type: str="", method: list=[], qvazi: str="",\
 				count_record: int=2000, page: int=1):
 		self.name = name
 		self.customer = customer
@@ -63,7 +63,9 @@ class goszakup:
 		self.__count_pages()
 
 	def get_request(self) -> str:
-		return self.session.get('{}{}'.format(self.host, self.filters.urlify()), verify=False).text	
+		res = self.session.get('{}{}'.format(self.host, self.filters.urlify()), verify=False).text	
+		print(res)
+		return res
 
 	def __count_pages(self) -> int:
 		self.count = 0
@@ -91,7 +93,6 @@ class excel:
 		table = []
 		soup = BeautifulSoup(html_doc, features="lxml")
 		
-		print(html_doc)
 		for tr in ((soup.find_all('tbody')[1]).find_all('tr')):
 			cells = tr.find_all('td')
 			row = list(map(lambda cell: excel.parse_cell(cell), cells))
