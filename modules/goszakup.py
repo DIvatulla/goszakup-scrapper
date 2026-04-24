@@ -105,6 +105,10 @@ class excel:
 		wb = Workbook()
 		ws = wb.active
 
+		ws.append(["#п/п", "Заказчик", "Наименование", "Способ_закупки",\
+		"Единица_измерения", "Кол-во", "Цена_за_ед", "Плановая_сумма",\
+		"Планируемый_срок_закупки", "Статус"])
+
 		try:
 			for i in range(gz.filters.count_record, gz.count+gz.filters.count_record, gz.filters.count_record):
 				gz.filters.page += 1
