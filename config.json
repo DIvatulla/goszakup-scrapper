@@ -3,9 +3,9 @@
 	"customer": "",
 	"spec": "",
 	"number": "",
-	"month": [],
-	"year": [2025, 2026],
-	"status": "",
+	"month": [5, 6],
+	"year": [2026],
+	"status": "2",
 	"subject_type": ["G", "S", "R"],
 	"method": [2, 124, 130]
 }

@@ -6,9 +6,9 @@ from openpyxl import Workbook
 from urllib.parse import urlsplit
 import time
 import re
-import requests
+import http.client
 import random
-from requests.adapters import HTTPAdapter
+
 
 class goszakup_filters:
 	def __init__(self, name: str="", customer: str="", spec: str="",\
@@ -51,25 +51,44 @@ class goszakup_filters:
 class goszakup:
 	def __init__(self, filters: goszakup_filters):
 		self.filters = filters
-		self.host = "https://goszakup.gov.kz"
-		self.adapter = HTTPAdapter(max_retries=10)
-		self.session = requests.Session()
-		self.session.mount('https://', self.adapter)
-		self.session.headers.update({
+		self.host = "goszakup.gov.kz"
+		self.headers = {
 			"Host": "goszakup.gov.kz",
 			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
 			"Content-Type": "*/*"
-		})
+		}
+		self.__conn = None
+		self.connect()
+		self.__get_cookies()
 		self.__count_pages()
 
-	def get_request(self) -> str:
-		res = self.session.get('{}{}'.format(self.host, self.filters.urlify()), verify=False).text	
-		print(res)
-		return res
+	def __get_cookies(self):
+		r = self.__request("GET", "/", self.headers)
+		r.read()
+		for h in reversed(r.getheaders()):
+			if h[0] == "Set-Cookie":
+				self.headers.setdefault("Set-Cookie", h[1])
+				break
+
+	def connect(self):
+		if self.__conn != None:
+			self.__conn.close()
+		
+		self.__conn = http.client.HTTPSConnection(self.host, 443)
+		self.__get_cookies()
+
+	def __request(self, method: str, url: str, headers: dict) -> http.client.HTTPResponse:
+		self.__conn.request(method, url, headers=headers)
+		response = self.__conn.getresponse()
+		return response
+	
+	def get(self) -> str:
+		r = self.__request("GET", self.filters.urlify(), self.headers)
+		return r.read().decode() 
 
 	def __count_pages(self) -> int:
 		self.count = 0
-		html_doc = self.get_request()
+		html_doc = self.get()
 		soup = BeautifulSoup(html_doc, features="lxml")
 		text = ((soup.find_all("small")[0]).find("strong")).get_text(strip=True)
 		match = re.search(f"{r"из "}(.*?){r" записей"}", text)
@@ -90,8 +109,10 @@ class excel:
 
 	@classmethod
 	def parse_html(cls, html_doc: str) -> list:
+		#print(html_doc)
 		table = []
 		soup = BeautifulSoup(html_doc, features="lxml")
+		#print(soup.find_all('tbody')[1])
 		
 		for tr in ((soup.find_all('tbody')[1]).find_all('tr')):
 			cells = tr.find_all('td')
@@ -109,11 +130,14 @@ class excel:
 		"Единица_измерения", "Кол-во", "Цена_за_ед", "Плановая_сумма",\
 		"Планируемый_срок_закупки", "Статус"])
 
+		gz.filters.page = 0
 		try:
 			for i in range(gz.filters.count_record, gz.count+gz.filters.count_record, gz.filters.count_record):
 				gz.filters.page += 1
-			
-				for row in cls.parse_html(gz.get_request()):
+				gz.connect()
+
+				for row in cls.parse_html(gz.get()):
+					#print(row)
 					ws.append([cell_dict["content"] for cell_dict in row])
 
 					for col_idx, cell_dict in enumerate(row, start=1):
@@ -122,6 +146,7 @@ class excel:
 							cell_obj.hyperlink = cell_dict["url"]
 							cell_obj.style = "Hyperlink"
 				
-				time.sleep(random.uniform(29, 79))
+				print(gz.filters.page)
+				time.sleep(random.uniform(9, 29))
 		finally:
 			wb.save(filename)
